@@ -6,6 +6,7 @@ import ch.bzz.generated.model.LoginRequest;
 import ch.bzz.model.Project;
 import ch.bzz.repository.ProjectRepository;
 import ch.bzz.util.JwtUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
 
+@Slf4j
 @RestController
 public class ProjectApiController implements ProjectApi {
 
@@ -31,10 +33,12 @@ public class ProjectApiController implements ProjectApi {
         String password = loginRequest.getPassword();
 
         if (projectName.isBlank() || projectName.length() > 100 || password.isBlank()) {
+            log.debug("Project creation rejected: invalid project name or password");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         // save() would overwrite an existing project, including its password
         if (projectRepository.existsById(projectName)) {
+            log.debug("Project creation rejected: project name already exists");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
@@ -42,6 +46,7 @@ public class ProjectApiController implements ProjectApi {
         project.setProjectName(projectName);
         project.setPasswordHash(encoder.encode(password));
         projectRepository.save(project);
+        log.info("Created project '{}'", projectName);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
@@ -52,10 +57,12 @@ public class ProjectApiController implements ProjectApi {
 
         // same response for both cases, so callers can't find out which project names exist
         if (project.isEmpty() || !encoder.matches(loginRequest.getPassword(), project.get().getPasswordHash())) {
+            log.warn("Failed login attempt");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         String token = jwtUtil.generateToken(project.get().getProjectName());
+        log.info("Project '{}' logged in", project.get().getProjectName());
         return ResponseEntity.ok(new LoginProject200Response().accessToken(token));
     }
 }
