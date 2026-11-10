@@ -37,4 +37,5 @@ Thumbs.db
 
 # === Other ===
 /src/main/resources/application.properties
-/app.log*
+/app.log
+/app.log.*.gz
