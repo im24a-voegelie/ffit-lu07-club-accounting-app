@@ -9,9 +9,12 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.Optional;
 
 @Component
 public class JwtUtil {
+
+    private static final String BEARER_PREFIX = "Bearer ";
 
     @Value("${jwt.secret}")
     private String secret;
@@ -42,6 +45,26 @@ public class JwtUtil {
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * Reads the project name (subject) from an "Authorization: Bearer <token>" header.
+     * Returns empty if the header is missing or the token is invalid or expired.
+     */
+    public Optional<String> extractProjectName(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+            return Optional.empty();
+        }
+        try {
+            String token = authorizationHeader.substring(BEARER_PREFIX.length());
+            String subject = Jwts.parserBuilder().setSigningKey(key).build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject();
+            return Optional.ofNullable(subject);
+        } catch (Exception e) {
+            return Optional.empty();
         }
     }
 }
